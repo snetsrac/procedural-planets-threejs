@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import GUI from 'lil-gui';
 import * as Stats from 'stats.js';
-import * as Planet from './planet';
+import { createPlanet } from './planet';
 import initGUI from './gui';
 
 // Initialization
@@ -25,11 +24,12 @@ scene.add(pointLight);
 
 addEventListener('resize', onWindowResize);
 
-const planet = Planet.createPlanet();
+const planet = createPlanet();
 scene.add(planet.mesh);
 
 // Log scene to the console for inspection
 console.log(scene);
+console.log(planet);
 
 // GUI
 initGUI(planet);

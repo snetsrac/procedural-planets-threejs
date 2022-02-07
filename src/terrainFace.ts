@@ -4,10 +4,11 @@
  */
 
 import * as THREE from 'three';
-import { ShapeSettings } from './planet';
+import { type ShapeSettings, type ShapeGenerator } from './planet';
 
-function createTerrainFace(localUp: THREE.Vector3, shapeSettings: ShapeSettings): THREE.BufferGeometry {
-  const resolution = shapeSettings.resolution;
+function createTerrainFace(localUp: THREE.Vector3, resolution: number, shapeGenerator:
+  ShapeGenerator): THREE.BufferGeometry {
+  
   const axisA = new THREE.Vector3(localUp.y, localUp.z, localUp.x);
   const axisB = localUp.clone().cross(axisA);
 
@@ -23,7 +24,7 @@ function createTerrainFace(localUp: THREE.Vector3, shapeSettings: ShapeSettings)
       const bVector = axisB.clone().multiplyScalar((percent.y * 2) - 1);
       const pointOnUnitCube = localUp.clone().add(aVector).add(bVector);
       const pointOnUnitSphere = mapCubeToSphere(pointOnUnitCube);
-      const pointOnPlanetSurface = pointOnUnitSphere.multiplyScalar(shapeSettings.radius);
+      const pointOnPlanetSurface = shapeGenerator(pointOnUnitSphere);
       pointOnPlanetSurface.toArray(vertices, index * 3);
 
       if (x != resolution - 1 && y != resolution - 1) {
