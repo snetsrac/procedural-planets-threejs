@@ -5,7 +5,7 @@ import { createPlanet } from './planet';
 import initGUI from './gui';
 
 // Initialization
-const renderer = new THREE.WebGLRenderer();
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(innerWidth, innerHeight);
 renderer.setClearColor(0x222222);
 document.body.appendChild(renderer.domElement);
@@ -26,10 +26,6 @@ addEventListener('resize', onWindowResize);
 
 const planet = createPlanet();
 scene.add(planet.mesh);
-
-// Log scene to the console for inspection
-console.log(scene);
-console.log(planet);
 
 // GUI
 initGUI(planet);

@@ -1,33 +1,27 @@
 import * as THREE from 'three';
-import * as BGU from 'three/examples/jsm/utils/BufferGeometryUtils';
-import { type NoiseSettings, DEFAULT_NOISE_SETTINGS, createNoiseGenerator } from './noise';
+import * as BufferGeometryUtils from 'three/examples/jsm/utils/BufferGeometryUtils';
+import { ColorSettings, createColorSettings } from './color';
+import { createShapeGenerator, createShapeSettings, ShapeGenerator, type ShapeSettings } from './shape';
 import { createTerrainFace } from './terrainFace';
 
 // TYPES
 
-interface ColorSettings {
-  color: THREE.ColorRepresentation;
-}
-
-interface ShapeSettings {
-  resolution: number;
-  radius: number;
-  noiseSettings: NoiseSettings
-}
-
-type ShapeGenerator = (point: THREE.Vector3) => THREE.Vector3;
-
 interface Planet {
-  mesh: THREE.Mesh;
-  getColorSettings: () => ColorSettings;
-  getShapeSettings: () => ShapeSettings;
-  setColorSettings: (colorSettings: Partial<ColorSettings>) => void;
-  setShapeSettings: (shapeSettings: Partial<Omit<ShapeSettings, 'noiseSettings'>>) => void;
-  setNoiseSettings: (noiseSettings: Partial<NoiseSettings>) => void;
-  toggleVisibility: () => void
+  resolution: number;
+  readonly shapeSettings: ShapeSettings;
+  readonly colorSettings: ColorSettings;
+  readonly mesh: THREE.Mesh;
+  generatePlanet: () => void
 }
 
 // CONSTANTS/DEFAULTS
+
+const DEFAULT_RESOLUTION = 40;
+
+const RESOLUTION_LIMITS = Object.freeze({
+  minResolution: 2,
+  maxResolution: 256
+});
 
 const DIRECTIONS: THREE.Vector3[] = [
   new THREE.Vector3(1, 0, 0),
@@ -38,112 +32,65 @@ const DIRECTIONS: THREE.Vector3[] = [
   new THREE.Vector3(0, 0, -1),
 ];
 
-const DEFAULT_COLOR_SETTINGS: ColorSettings = {
-  color: 0x009900
-};
-
-const DEFAULT_SHAPE_SETTINGS: ShapeSettings = {
-  resolution: 10,
-  radius: 1,
-  noiseSettings: DEFAULT_NOISE_SETTINGS
-};
-
-const SHAPE_SETTINGS_LIMITS = {
-  minResolution: 2,
-  maxResolution: 256,
-  minRadius: 0.1,
-  maxRadius: 10
-};
-
 // FUNCTIONS
 
 // Create a planet object using the passed in or default settings. Generates new
 // geometry, material, and mesh. Includes functions to modify the planet's settings
 // after creation.
-function createPlanet(colorSettings?: ColorSettings, shapeSettings?: ShapeSettings): Planet {
-  let _colorSettings = colorSettings ?? DEFAULT_COLOR_SETTINGS;
-  let _shapeSettings = shapeSettings ?? DEFAULT_SHAPE_SETTINGS;
-  const geometry = constructGeometry(_shapeSettings);
-  const material = constructMaterial(_colorSettings);
-  const mesh = new THREE.Mesh(geometry, material);
+function createPlanet(): Planet {
+  let resolution = DEFAULT_RESOLUTION;
+  const shapeSettings = createShapeSettings();
+  const colorSettings = createColorSettings();
 
-  function setColorSettings(this: Planet, colorSettings: Partial<ColorSettings>): void {
-    _colorSettings = { ..._colorSettings, ...colorSettings };
+  let shapeGenerator: ShapeGenerator;
+  let terrainFaces: THREE.BufferGeometry[];
+  const mesh: THREE.Mesh = new THREE.Mesh();
 
-    if (this.mesh.material instanceof THREE.Material) {
-      this.mesh.material.dispose();
+  generatePlanet();
+
+  // Create the six terrain faces in each direction, then merge into a single geometry
+  function constructGeometry() {
+    shapeGenerator = createShapeGenerator(shapeSettings);
+    terrainFaces = [];
+
+    DIRECTIONS.forEach((direction) => {
+      terrainFaces.push(createTerrainFace(direction, resolution, shapeGenerator));
+    });
+
+    mesh.geometry.dispose();  
+    mesh.geometry = BufferGeometryUtils.mergeVertices(BufferGeometryUtils.mergeBufferGeometries(terrainFaces));
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.computeBoundingSphere();
+    mesh.geometry.computeVertexNormals();
+  }
+
+  // Construct a terrain material
+  function constructMaterial() {
+    if (Array.isArray(mesh.material)) {
+      mesh.material.forEach(material => { material.dispose(); });
     } else {
-      this.mesh.material.forEach((material) => material.dispose());
+      mesh.material.dispose();
     }
 
-    this.mesh.material = constructMaterial(_colorSettings);
+    mesh.material = new THREE.MeshStandardMaterial({ ...colorSettings, flatShading: true });
   }
 
-  function setShapeSettings(this: Planet, shapeSettings: Partial<Omit<ShapeSettings, 'noiseSettings'>>): void {
-    _shapeSettings = { ..._shapeSettings, ...shapeSettings };
-    this.mesh.geometry.dispose();
-    this.mesh.geometry = constructGeometry(_shapeSettings);
+  function generatePlanet() {
+    constructGeometry();
+    constructMaterial();
   }
 
-  function setNoiseSettings(this: Planet, noiseSettings: Partial<NoiseSettings>) {
-    _shapeSettings.noiseSettings = { ..._shapeSettings.noiseSettings, ...noiseSettings };
-    this.mesh.geometry.dispose();
-    this.mesh.geometry = constructGeometry(_shapeSettings);
-  }
-
+  // Trivial get/set on resolution is necessary because it is declared in the closure and
+  // passed to helper functions. Otherwise planet.resolution = # would not affect the
+  // closure variable.
   return {
+    get resolution() { return resolution; },
+    set resolution(value) { resolution = value; },
+    shapeSettings,
+    colorSettings,
     mesh,
-    getColorSettings: () => ({ ..._colorSettings }),
-    getShapeSettings: () => ({ ..._shapeSettings }),
-    setColorSettings,
-    setShapeSettings,
-    setNoiseSettings,
-    toggleVisibility: () => { mesh.visible = !mesh.visible; }
+    generatePlanet
   };
 }
 
-// Create the six terrain faces in each direction, then merge into a single geometry
-function constructGeometry(shapeSettings: ShapeSettings): THREE.BufferGeometry {
-  const shapeGenerator = createShapeGenerator(shapeSettings);
-  const faces: THREE.BufferGeometry[] = [];
-
-  DIRECTIONS.forEach((direction) => {
-    faces.push(createTerrainFace(direction, shapeSettings.resolution, shapeGenerator));
-  });
-
-  const geometry = BGU.mergeVertices(BGU.mergeBufferGeometries(faces));
-  geometry.computeBoundingBox();
-  geometry.computeBoundingSphere();
-  geometry.computeVertexNormals();
-
-  return geometry;
-}
-
-// Construct a terrain material
-function constructMaterial(colorSettings: ColorSettings) {
-  return new THREE.MeshStandardMaterial({ color: colorSettings.color, flatShading: true });
-}
-
-// Generate a point on the planet surface from a point on the unit sphere, using
-// the information in shapeSettings
-function createShapeGenerator(shapeSettings: ShapeSettings): ShapeGenerator {
-  const noiseGenerator = createNoiseGenerator();
-  const { roughness, strength, center } = shapeSettings.noiseSettings;
-
-  return function (point: THREE.Vector3) {
-    const elevation =
-      (noiseGenerator.evaluate(point.clone().multiplyScalar(roughness).add(center)) + 1)
-      * strength * 0.5;
-    
-    return point.clone().multiplyScalar(shapeSettings.radius * (1 + elevation));
-  };
-}
-
-export {
-  ColorSettings,
-  ShapeSettings,
-  Planet,
-  ShapeGenerator,
-  SHAPE_SETTINGS_LIMITS,
-  createPlanet
-};
+export { createPlanet, RESOLUTION_LIMITS, ColorSettings, Planet };
