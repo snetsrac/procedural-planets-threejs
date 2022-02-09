@@ -18,10 +18,9 @@ interface Planet {
 
 const DEFAULT_RESOLUTION = 40;
 
-const RESOLUTION_LIMITS = Object.freeze({
-  minResolution: 2,
-  maxResolution: 256
-});
+const PLANET_GUI_PARAMS = {
+  resolution: [2, 256, 1]
+};
 
 const DIRECTIONS: THREE.Vector3[] = [
   new THREE.Vector3(1, 0, 0),
@@ -93,4 +92,4 @@ function createPlanet(): Planet {
   };
 }
 
-export { createPlanet, RESOLUTION_LIMITS, ColorSettings, Planet };
+export { createPlanet, PLANET_GUI_PARAMS, ColorSettings, Planet };

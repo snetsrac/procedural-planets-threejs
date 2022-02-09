@@ -1,8 +1,3 @@
-/**
- * Terrain face generation adapted from code by Sebastian Lague:
- * https://github.com/SebLague/Procedural-Planets
- */
-
 import * as THREE from 'three';
 import { ShapeGenerator } from './shape';
 
