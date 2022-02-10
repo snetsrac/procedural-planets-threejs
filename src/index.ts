@@ -14,6 +14,8 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
 camera.position.z = 5;
 
+addEventListener('resize', onWindowResize);
+
 const controls = new OrbitControls(camera, renderer.domElement);
 
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
@@ -21,8 +23,6 @@ const pointLight = new THREE.PointLight(0xffffff, 0.8);
 pointLight.position.set(250, 250, 250);
 scene.add(ambientLight);
 scene.add(pointLight);
-
-addEventListener('resize', onWindowResize);
 
 const planet = createPlanet();
 scene.add(planet.mesh);

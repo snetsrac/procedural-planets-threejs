@@ -13,9 +13,9 @@ interface NoiseGenerator {
 function createSimplexNoiseGenerator(): NoiseGenerator {
   // Gradient vectors (midpoint of each edge of a unit cube)
   const grad3 = [
-    new THREE.Vector3(1, 1, 0), new THREE.Vector3(-1, 1, 0), new THREE.Vector3(1, -1, 0), new THREE.Vector3(-1, -1, 0),
-    new THREE.Vector3(1, 0, 1), new THREE.Vector3(-1, 0, 1), new THREE.Vector3(1, 0, -1), new THREE.Vector3(-1, 0, 1),
-    new THREE.Vector3(0, 1, 1), new THREE.Vector3(0, -1, 1), new THREE.Vector3(0, 1, -1), new THREE.Vector3(0, -1, -1)
+    [1, 1, 0], [-1,  1, 0], [1, -1,  0], [-1, -1,  0],
+    [1, 0, 1], [-1,  0, 1], [1,  0, -1], [-1,  0,  1],
+    [0, 1, 1], [ 0, -1, 1], [0,  1, -1], [ 0, -1, -1]
   ];
 
   // Permutation table (originally from Ken Perlin)
@@ -48,22 +48,26 @@ function createSimplexNoiseGenerator(): NoiseGenerator {
 
   // 3D simplex noise
   function evaluate(point: THREE.Vector3): number {
+    const x = point.x;
+    const y = point.y;
+    const z = point.z;
+
     // Noise contributions from the four corners
     let n0, n1, n2, n3;
 
     // Skew the input space to determine which simplex cell we're in.
     // Very nice and simple skew factor for 3D
-    const s = (point.x + point.y + point.z) * F3;
-    const i = Math.floor(point.x + s);
-    const j = Math.floor(point.y + s);
-    const k = Math.floor(point.z + s);
+    const s = (x + y + z) * F3;
+    const i = Math.floor(x + s);
+    const j = Math.floor(y + s);
+    const k = Math.floor(z + s);
     const t = (i + j + k) * G3;
 
     // Unskew the cell origin back to (x, y ,z) space.
     // The x, y, z distances from the cell origin.
-    const x0 = point.x - i + t;
-    const y0 = point.y - j + t;
-    const z0 = point.z - k + t;
+    const x0 = x - i + t;
+    const y0 = y - j + t;
+    const z0 = z - k + t;
 
     // For the 3D case, the simplex shape is a slightly irregular tetrahedron.
     // Determine which simplex we are in.
@@ -158,39 +162,40 @@ function createSimplexNoiseGenerator(): NoiseGenerator {
       n0 = 0;
     } else {
       t0 *= t0;
-      n0 = t0 * t0 * grad3[gi0].clone().dot(new THREE.Vector3(x0, y0, z0));
+      n0 = t0 * t0 * dot(grad3[gi0], x0, y0, z0);
     }
-
     
     let t1 = 0.5 - (x1 * x1) - (y1 * y1) - (z1 * z1);
     if (t1 < 0) {
       n1 = 0;
     } else {
       t1 *= t1;
-      n1 = t1 * t1 * grad3[gi1].clone().dot(new THREE.Vector3(x1, y1, z1));
+      n1 = t1 * t1 * dot(grad3[gi1], x1, y1, z1);
     }
-
     
     let t2 = 0.5 - (x2 * x2) - (y2 * y2) - (z2 * z2);
     if (t2 < 0) {
       n2 = 0;
     } else {
       t2 *= t2;
-      n2 = t2 * t2 * grad3[gi2].clone().dot(new THREE.Vector3(x2, y2, z2));
+      n2 = t2 * t2 * dot(grad3[gi2], x2, y2, z2);
     }
-
     
     let t3 = 0.5 - (x3 * x3) - (y3 * y3) - (z3 * z3);
     if (t3 < 0) {
       n3 = 0;
     } else {
       t3 *= t3;
-      n3 = t3 * t3 * grad3[gi3].clone().dot(new THREE.Vector3(x3, y3, z3));
+      n3 = t3 * t3 * dot(grad3[gi3], x3, y3, z3);
     }
 
     // Add contributions from each corner to get the final noise value.
     // The result is scaled to stay just inside [-1, 1]
     return (n0 + n1 + n2 + n3) * 32;
+
+    function dot(a: number[], x: number, y: number, z: number): number {
+      return a[0] * x + a[1] * y + a[2] * z;
+    }
   }
 
   return { evaluate };

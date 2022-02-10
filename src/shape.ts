@@ -1,4 +1,4 @@
-import { createNoiseFilter, createNoiseSettings, NoiseFilter, type NoiseLayer, type NoiseSettings } from "./noise";
+import { createNoiseFilter, createNoiseSettings, type NoiseFilter, type NoiseLayer } from "./noise";
 
 // TYPES
 
